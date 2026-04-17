@@ -63,7 +63,7 @@ app.MapGet("/api/dashboard", async (
         plantId,
         lineId,
         machineId,
-        days,
+        days
     });
 
     if (string.IsNullOrWhiteSpace(json))
@@ -71,8 +71,15 @@ app.MapGet("/api/dashboard", async (
         return Results.NotFound(new { error = "No dashboard data returned." });
     }
 
-    using var document = JsonDocument.Parse(json);
-    return Results.Json(document.RootElement.Clone());
+    try
+    {
+        using var doc = JsonDocument.Parse(json);
+        return Results.Json(doc.RootElement.Clone());
+    }
+    catch (JsonException)
+    {
+        return Results.Problem("Database function returned invalid JSON.");
+    }
 });
 
 app.Run();
