@@ -10,7 +10,7 @@ var connectionString = builder.Configuration.GetConnectionString("Postgres")
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
     .Get<string[]>()
-    ?? ["http://localhost:3000", "http://localhost:5173"];
+    ?? ["http://localhost:5173"];
 
 builder.Services.AddCors(options =>
 {
@@ -22,9 +22,13 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.WebHost.UseUrls("http://0.0.0.0:8080");
+
 var app = builder.Build();
 
 app.UseCors("ReactApp");
+
+app.MapGet("/", () => Results.Ok(new { message = "Dashboard API is running" }));
 
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 
@@ -36,14 +40,10 @@ app.MapGet("/api/dashboard", async (
     int days = 45) =>
 {
     if (tenantId == Guid.Empty)
-    {
         return Results.BadRequest(new { error = "tenantId is required." });
-    }
 
     if (days is < 1 or > 365)
-    {
         return Results.BadRequest(new { error = "days must be between 1 and 365." });
-    }
 
     await using var connection = new NpgsqlConnection(connectionString);
 
@@ -67,9 +67,7 @@ app.MapGet("/api/dashboard", async (
     });
 
     if (string.IsNullOrWhiteSpace(json))
-    {
         return Results.NotFound(new { error = "No dashboard data returned." });
-    }
 
     try
     {
