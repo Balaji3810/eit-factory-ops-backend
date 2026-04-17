@@ -1,0 +1,18 @@
+# Node
+node_modules/
+dist/
+.env
+
+# .NET
+bin/
+obj/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
