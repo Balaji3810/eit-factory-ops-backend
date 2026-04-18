@@ -1,4 +1,4 @@
-#  Factory Ops Dashboard - Integrated Runnable Project
+#    Factory Ops Dashboard - Integrated Runnable Project
 
 ## Frontend
 ```bash
