@@ -1,8 +1,5 @@
-const API_BASE_URL = (
-  import.meta.env.VITE_DASHBOARD_API_BASE_URL ||
-  import.meta.env.VITE_API_BASE_URL ||
-  ''
-).replace(/\/$/, '');
+const API_BASE_URL =
+  'https://eit-factory-ops-dashboard-hucsf6cxfubzdrab.centralus-01.azurewebsites.net';
 
 //  Demo mapping until plant/line/machine GUIDs are provided from the real master data service.
 const TENANT_ID_BY_PLANT = {
