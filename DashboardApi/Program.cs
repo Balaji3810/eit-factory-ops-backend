@@ -7,7 +7,6 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("Postgres")
     ?? throw new InvalidOperationException("Connection string 'Postgres' is missing.");
 
-// ✅ FIX: Allow ALL origins (POC safe)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -22,12 +21,26 @@ builder.WebHost.UseUrls("http://0.0.0.0:8080");
 
 var app = builder.Build();
 
-// ✅ APPLY CORS
 app.UseCors("AllowAll");
 
 app.MapGet("/", () => Results.Ok(new { message = "Dashboard API is running" }));
-
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
+
+static IResult ParseJsonPayload(string? json, string notFoundMessage)
+{
+    if (string.IsNullOrWhiteSpace(json))
+        return Results.NotFound(new { error = notFoundMessage });
+
+    try
+    {
+        using var doc = JsonDocument.Parse(json);
+        return Results.Json(doc.RootElement.Clone());
+    }
+    catch (JsonException)
+    {
+        return Results.Problem("Database function returned invalid JSON.");
+    }
+}
 
 app.MapGet("/api/dashboard", async (
     Guid tenantId,
@@ -45,7 +58,7 @@ app.MapGet("/api/dashboard", async (
     await using var connection = new NpgsqlConnection(connectionString);
 
     const string sql = """
-        SELECT public.get_dashboard_data(
+        SELECT eit.get_dashboard_data(
             @tenantId,
             @plantId,
             @lineId,
@@ -63,18 +76,78 @@ app.MapGet("/api/dashboard", async (
         days
     });
 
-    if (string.IsNullOrWhiteSpace(json))
-        return Results.NotFound(new { error = "No dashboard data returned." });
+    return ParseJsonPayload(json, "No dashboard data returned.");
+});
 
-    try
+app.MapGet("/api/analytics", async (
+    Guid tenantId,
+    DateOnly dateFrom,
+    DateOnly dateTo) =>
+{
+    if (tenantId == Guid.Empty)
+        return Results.BadRequest(new { error = "tenantId is required." });
+
+    if (dateTo < dateFrom)
+        return Results.BadRequest(new { error = "dateTo must be on or after dateFrom." });
+
+    await using var connection = new NpgsqlConnection(connectionString);
+
+    const string sql = """
+        SELECT eit.get_oee_analytics_dashboard(
+            @tenantId,
+            @dateFrom,
+            @dateTo
+        )::text;
+    """;
+
+    var json = await connection.QuerySingleOrDefaultAsync<string>(sql, new
     {
-        using var doc = JsonDocument.Parse(json);
-        return Results.Json(doc.RootElement.Clone());
-    }
-    catch (JsonException)
+        tenantId,
+        dateFrom,
+        dateTo
+    });
+
+    return ParseJsonPayload(json, "No analytics data returned.");
+});
+
+app.MapGet("/api/line-audit", async (
+    Guid tenantId,
+    Guid? plantId,
+    Guid? lineId,
+    Guid? machineId,
+    DateOnly? date,
+    TimeOnly? shiftStart,
+    TimeOnly? shiftEnd) =>
+{
+    if (tenantId == Guid.Empty)
+        return Results.BadRequest(new { error = "tenantId is required." });
+
+    await using var connection = new NpgsqlConnection(connectionString);
+
+    const string sql = """
+        SELECT eit.get_line_audit_dashboard(
+            @tenantId,
+            @plantId,
+            @lineId,
+            @machineId,
+            @date,
+            COALESCE(@shiftStart, TIME '06:00'),
+            COALESCE(@shiftEnd, TIME '14:00')
+        )::text;
+    """;
+
+    var json = await connection.QuerySingleOrDefaultAsync<string>(sql, new
     {
-        return Results.Problem("Database function returned invalid JSON.");
-    }
+        tenantId,
+        plantId,
+        lineId,
+        machineId,
+        date,
+        shiftStart,
+        shiftEnd
+    });
+
+    return ParseJsonPayload(json, "No line audit data returned.");
 });
 
 app.Run();
