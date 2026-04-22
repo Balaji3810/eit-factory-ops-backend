@@ -104,7 +104,7 @@ app.MapGet("/api/analytics", async (
         dateTo
     });
 
-    return ParseJsonPayload(json, "No analytics data returned.");
+    return ParseJsonPayload(json, "No analytics data returned...");
 });
 
 app.MapGet("/api/line-audit", async (
