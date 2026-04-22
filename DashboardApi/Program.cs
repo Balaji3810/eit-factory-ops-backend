@@ -81,22 +81,19 @@ app.MapGet("/api/dashboard", async (
 
 app.MapGet("/api/analytics", async (
     Guid tenantId,
-    DateOnly dateFrom,
-    DateOnly dateTo) =>
+    string dateFrom,
+    string dateTo) =>
 {
     if (tenantId == Guid.Empty)
         return Results.BadRequest(new { error = "tenantId is required." });
-
-    if (dateTo < dateFrom)
-        return Results.BadRequest(new { error = "dateTo must be on or after dateFrom." });
 
     await using var connection = new NpgsqlConnection(connectionString);
 
     const string sql = """
         SELECT eit.get_oee_analytics_dashboard(
             @tenantId,
-            @dateFrom,
-            @dateTo
+            CAST(@dateFrom AS date),
+            CAST(@dateTo AS date)
         )::text;
     """;
 
@@ -115,9 +112,9 @@ app.MapGet("/api/line-audit", async (
     Guid? plantId,
     Guid? lineId,
     Guid? machineId,
-    DateOnly? date,
-    TimeOnly? shiftStart,
-    TimeOnly? shiftEnd) =>
+    string? date,
+    string? shiftStart,
+    string? shiftEnd) =>
 {
     if (tenantId == Guid.Empty)
         return Results.BadRequest(new { error = "tenantId is required." });
@@ -130,9 +127,9 @@ app.MapGet("/api/line-audit", async (
             @plantId,
             @lineId,
             @machineId,
-            @date,
-            COALESCE(@shiftStart, TIME '06:00'),
-            COALESCE(@shiftEnd, TIME '14:00')
+            CAST(@date AS date),
+            COALESCE(CAST(@shiftStart AS time), TIME '06:00'),
+            COALESCE(CAST(@shiftEnd AS time), TIME '14:00')
         )::text;
     """;
 
